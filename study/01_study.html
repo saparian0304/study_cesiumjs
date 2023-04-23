@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Page Title</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <!-- <link rel='stylesheet' type='text/css' media='screen' href='main.css'> -->
+    <script src='../Build/Cesium/Cesium.js'></script>
+    <style>
+        @import url(../Build/CesiumUnminified/Widgets/widgets.css);
+        html, body, #cesiumContainer{
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="cesiumContainer"></div>
+    <script>
+        const viewer = new Cesium.Viewer("cesiumContainer");
+        const scene = viewer.scene;
+        const canvas = viewer.canvas;
+        canvas.setAttribute("tabindex", "0"); // focus가 가능하도록 속성을 부여, 두번째 파라미터는 탭 키 탐색시 순서를 의미함
+        canvas.onclick = function() {
+            canvas.focus();
+        }
+        const ellipsoid = scene.globe.ellipsoid;
+
+        // disable the default event handlers
+        scene.screenSpaceCameraController.enableRotate = false;
+        scene.screenSpaceCameraController.enableTranslate = false;
+        scene.screenSpaceCameraController.enableZoom = false;
+        scene.screenSpaceCameraController.enableTilt = false;
+        scene.screenSpaceCameraController.enableLook = false;
+
+        let startMousePosition;
+        let mousePosition;
+        const flags = {
+            looking : false,
+            moveForward : false,
+            moveBackward : false,
+            moveUp : false,
+            moveDown : false,
+            moveLeft : false,
+            moveRight : false,
+        };
+
+        const handler = new Cesium.ScreenSpaceEventHandler(canvas);
+
+        handler.setInputAction(function (movement) {
+            flags.looking = true;
+            mousePosition = startMousePosition = Cesium.Cartesian3.clone(movement.position) // 3차원 좌표로 변환
+            
+        }, Cesium.ScreenSpaceEventType.LEFT_DOWN);
+
+        handler.setInputAction(function (movement) {
+            mousePosition = movement.endPosition;
+        }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+        handler.setInputAction(function (movement) {
+            flasg.looking = false;
+        }, Cesium.ScreenSpaceEventType.LEFT_UP);
+
+        function getFlagForKeyCode(keyCode) {
+            switch (keyCode) {
+                case "W".charCodeAt(0):
+                    return "moveForward";
+                case "S".charCodeAt(0):
+                    return "moveBackward";
+                case "Q".charCodeAt(0):
+                    return "moveUp";
+                case "E".charCodeAt(0):
+                    return "moveDown";
+                case "D".charCodeAt(0):
+                    return "moveRight";
+                case "A".charCodeAt(0):
+                    return "moveLeft";
+                default:
+                    return undefined;
+            }
+        }
+
+        document.addEventListener(
+            "keydown",
+            function(e) {
+                const flagName = getFlagForKeyCode(e.keyCode);
+                if (typeof flagName !== "undefined") {
+                    flags[flagName] = true;
+                }
+            },
+            false
+        )
+
+        document.addEventListener(
+            "keyup",
+            function(e) {
+                const flagName = getFlagForKeyCode(e.keyCode);
+                if (typeof flagName !== "undefined") {
+                    flags[flagName] = false;
+                }
+            },
+            false
+        )
+
+        viewer.clock.onTick.addEventListener(function (clock) {
+            const camera = viewer.camera;
+
+            if (flags.looking) {
+                const width = canvas.clientWidth;
+                const height = canvas.clientHeight;
+
+                // Coordinate (0.0, 0.0) will be where the mouse was clicked.
+                const x = (mousePosition.x - startMousePosition.x) / width;
+                const y = (mousePosition.y - startMousePosition.y) / height;
+
+                const lookFactor = 0.05;
+                camera.lookRight( x * lookFactor);
+                camera.lookUp(y * lookFactor);
+            }
+
+            // Change movement speed based on the distance of the camera to the surface of the ellipsoid.
+        
+            const cameraHeight = ellipsoid.cartesianToCartographic(
+                
+                camera.position
+            ).height;
+
+            const moveRate = cameraHeight / 100.0;
+
+            if (flags.moveForward) {
+                camera.moveForward(moveRate);
+            }
+            if (flags.moveBackward) {
+                camera.moveBackward(moveRate);
+            }
+            if (flags.moveUp) {
+                camera.moveUp(moveRate);
+            }
+            if (flags.moveDown) {
+                camera.moveDown(moveRate);
+            }
+            if (flags.moveLeft) {
+                camera.moveLeft(moveRate);
+            }
+            if (flags.moveRight) {
+                camera.moveRight(moveRate);
+            }
+        })
+    </script>
+</body>
+</html>
